@@ -1,0 +1,8 @@
+# Python stuff
+__pycache__
+
+# Private data
+configuration.py
+raw_proxies.txt
+proxies.txt
+data/
