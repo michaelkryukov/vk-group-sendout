@@ -3,19 +3,25 @@
 1. Install python 3.5 or greater (https://www.python.org/downloads/)   
 
 ### Usage
-- Reads proxies from raw_proxies.txt and validates them. Result is saved to proxies.txt
+- Reads proxies from `raw_proxies.txt` and validates them. Result is added to file `proxies.txt`
 ```
 python3 script.py proxies
 ```
 
-- Uses proxies from proxies.txt and settings from `SETTINGS` section in `script.py` and performs send out.
+- Uses proxies from `proxies.txt` and settings from `SETTINGS` section in `script.py` and performs send out.
 ```
 python3 script.py
+```
+
+- Performs send out with data left in `data/` folder (from previous run for example).
+```
+python3 script.py keep
 ```
 
 **WARNINGS:**
 - thees examples are for execution in terminal
 - python3 can be python or python3.6 on your system
+- proxies are not required
 
 ### Example settings
 ```python
@@ -25,11 +31,12 @@ python3 script.py
 MESSAGE = "Привет. Проверка скрипта для рассылки.\nЯ поспамлю, прости ;)"
 ATTACHMENT = "photo-145935681_456239429"
 
-MINIMUM_MESSAGES_TO_SEND = 500
+MESSAGES_TO_SEND = 500
 REPEAT = 1
 REPEAT_PAUSE = 30
 UPDATE_TARGET_USERS = True
 OFFSET_FOR_TARGETS = 0
+FROM_END = False
 
 SEND_MESSAGES_AFTER_UNREAD = True
 
