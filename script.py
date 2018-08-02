@@ -22,6 +22,8 @@ FROM_END = False  # collect targets from end of conversations
 
 SEND_MESSAGES_AFTER_UNREAD = True  # send messages to conversations where there are unread message by user
 
+THREADS_FOR_SENDOUT = 1  # how many threads should be sendign messages (requires good proxy for save execution)
+
 TOKENS = [
     "TOKEN_HERE"
 ]
@@ -94,11 +96,9 @@ def raw_request(url, proxy={}, **params):
         except ValueError:
             pass
 
-        print(type(e), e)
-
         return ""
 
-        return raw_request(url, proxy={}, **params)
+        # return raw_request(url, proxy={}, **params)
 
 
 def request(method, on_error=None, **params):
@@ -335,16 +335,48 @@ def perform_sendout():
     with open("data/unanswered_peers_local_ids.json", "r") as o:
         local_ids = list(set(json.load(o)))
 
-    new_local_ids = []
+    one_chunk = math.ceil(len(local_ids) / THREADS_FOR_SENDOUT)
 
-    def save_new_local_ids():
-        with open("data/unanswered_peers_local_ids.json", "w") as o:
-            json.dump(new_local_ids, o)
+    if one_chunk < ONE_SENDOUT_SIZE:
+        one_chunk = ONE_SENDOUT_SIZE
+
+    performers_chunks = list(chunks(local_ids, one_chunk))
+
+    for i in range(len(performers_chunks)):
+        with open("data/new_unanswered_peers_local_ids_{}.json".format(i), "w") as o:
+            o.write("")
+
+    print("=" * 30 + " Sending message: " + "=" * 30 + "\n" + MESSAGE + "\n" + "=" * 78)
+
+    killed = False
+
+    try:
+        pool = Pool(THREADS_FOR_SENDOUT)
+        pool.starmap(perform_actual_sendout, enumerate(performers_chunks))
+        pool.close()
+        pool.join()
+    except KeyboardInterrupt:
+        killed = True
+
+    new_local_ids = set()
+
+    for i in range(len(performers_chunks)):
+        with open("data/new_unanswered_peers_local_ids_{}.json".format(i)) as o:
+            for line in o:
+                new_local_ids.add(line.strip())
+
+    with open("data/unanswered_peers_local_ids.json", "w") as o:
+        json.dump(list(new_local_ids), o)
+
+    if killed:
+        exit()
+
+
+def perform_actual_sendout(sendouter_id, local_ids):
+    new_local_ids = []
 
     local_ids_chunks = list(chunks(local_ids, ONE_SENDOUT_SIZE))
     chunks_amount = len(local_ids_chunks)
-
-    print("=" * 30 + " Sending message: " + "=" * 30 + "\n" + MESSAGE + "\n" + "=" * 78)
 
     try:
         for i, chunk in enumerate(local_ids_chunks):
@@ -378,11 +410,16 @@ def perform_sendout():
             for local_id in chunk:
                 new_local_ids.append(local_id)
 
-        save_new_local_ids()
+        with open("data/new_unanswered_peers_local_ids_{}.json".format(sendouter_id), "a") as o:
+            for local_id in new_local_ids:
+                o.write(str(local_id) + "\n")
+
         exit()
 
     finally:
-        save_new_local_ids()
+        with open("data/new_unanswered_peers_local_ids_{}.json".format(sendouter_id), "a") as o:
+            for local_id in new_local_ids:
+                o.write(str(local_id) + "\n")
 
     clear_and_paste("Done sending messages ({}).".format(
         chunks_amount * ONE_SENDOUT_SIZE
